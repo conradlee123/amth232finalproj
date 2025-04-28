@@ -1,0 +1,308 @@
+---
+title: "MATH232FinalProject"
+output: html_document
+date: "2025-04-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Some handy libraries
+library(car)
+library(stats)
+library(ggplot2)
+
+
+library(class)
+```
+
+
+```{r}
+library(worldfootballR)
+
+team_url <- "https://fbref.com/en/squads/822bd0ba/Liverpool-Stats"
+
+team_standard <- na.omit(fb_team_player_stats(team_urls = team_url, stat_type = "standard"))
+fullgames_player <- (team_standard["Min_Playing_Time"] / 90)
+fullgames_player <- as.vector(fullgames_player)
+  
+#head(fullgames_player, 10)
+  
+
+standard_cols_unadj <- c("Player", "Pos", "Age", "Min_Playing_Time")
+standard_cols_unadj <- team_standard[, standard_cols_unadj]
+standard_cols_adj <- c("CrdY", "CrdR", "npxG_Expected", "xAG_Expected", "PrgC_Progression", "PrgR_Progression")
+
+#length(fullgames_player)
+#length(team_standard[, standard_cols_adj])
+
+new_m <- team_standard[, standard_cols_adj] / fullgames_player
+
+head(new_m, 10)
+#standard_cols_adj <- sweep(team_standard[, standard_cols_adj], 1, fullgames_player, "/")
+  
+#team_standard_clean <- cbind(team_standard[, standard_cols_unadj], sweep(team_standard[, standard_cols_adj], 2, as.numeric(fullgames_player), "/"))
+  
+team_standard_clean <- team_standard
+#team_standard_clean <- cbind(standard_cols_unadj, standard_cols_adj)
+  
+#head(team_standard_clean)
+
+```
+
+
+
+
+
+
+
+```{r}
+#https://jaseziv.github.io/worldfootballR/articles/extract-fbref-data.html#get-player-scouting-report
+
+library(worldfootballR)
+
+pull_team_data <- function(team_url){
+  team_standard <- na.omit(fb_team_player_stats(team_urls = team_url, stat_type = "standard"))
+  fullgames_player <- (team_standard["Min_Playing_Time"] / 90)
+  fullgames_player <- as.vector(fullgames_player)
+  #head(team_standard, 10)
+  
+  #Player,
+  #Pos,
+  #Age,
+  #Min_Playing_Time,
+  #CrdY / games
+  #CrdR / games
+  #npxG_Expected / games
+  #xAG_Expected / games
+  #PrgC_Progression / games
+  #PrgR_Progression / games
+  
+  standard_cols_unadj <- c("Player", "Pos", "Age", "Min_Playing_Time")
+  standard_cols_unadj <- team_standard[, standard_cols_unadj]
+  standard_cols_adj <- c("CrdY", "CrdR", "npxG_Expected", "xAG_Expected", "PrgC_Progression", "PrgR_Progression")
+  
+  standard_cols_adj <- team_standard[, standard_cols_adj] / fullgames_player
+  team_standard_clean <- cbind(standard_cols_unadj, standard_cols_adj)
+  
+  #head(team_standard_clean)
+  
+  team_shooting <- fb_team_player_stats(team_urls = team_url, stat_type = "shooting")
+  #head(team_shooting, 10)
+  
+  #SoT_percent_Standard
+  #Sh_per_90_Standard
+  #SoT_per_90_Standard
+  #Dist_Standard
+  #npxG_per_Sh_Expected NO
+  #np:G_minus_xG_Expected / games
+  
+  shooting_cols_unadj <- c("SoT_percent_Standard", "Sh_per_90_Standard", "SoT_per_90_Standard", "Dist_Standard", "npxG_per_Sh_Expected")
+  shooting_cols_unadj <- team_shooting[, shooting_cols_unadj]
+  shooting_cols_unadj[is.na(shooting_cols_unadj)] <- 0
+  shooting_cols_adj <- c("np:G_minus_xG_Expected")
+  
+  
+  #shooting_cols_adj <- lapply(team_shooting[, shooting_cols_adj], as.numeric) / fullgames_player
+  #team_shooting_clean <- cbind(shooting_cols_unadj, shooting_cols_adj)
+  
+  team_shooting_clean <- na.omit(shooting_cols_unadj)
+  
+  team_passing <- fb_team_player_stats(team_urls = team_url, stat_type = "passing")
+  #head(team_passing, 10)
+  
+  #TotDist_Total / games
+  #PrgDist_Total / games
+  #Cmp_Short / games
+  #Att_Short / games
+  #Cmp_percent_Short
+  #Cmp_Medium / games
+  #Att_Medium / games
+  #Cmp_percent_Medium
+  #Cmp_Long / games
+  #Att_Long / games
+  #Cmp_percent_Long
+  #A_minus_xAG_Expected / games NO
+  #KP / games
+  #Final_Third / games
+  #PPA / games
+  #CrsPA / games
+  #PrgP / games
+  
+  
+  passing_cols_unadj <- c("Cmp_percent_Short", "Cmp_percent_Medium", "Cmp_percent_Long")
+  passing_cols_unadj <- team_passing[, passing_cols_unadj]
+  passing_cols_unadj[is.na(passing_cols_unadj)] <- 0
+  
+  
+  passing_cols_adj <- c("TotDist_Total", "PrgDist_Total", "Cmp_Short", "Att_Short", "Cmp_Medium", "Att_Medium", "Cmp_Long", "Att_Long", "KP", "Final_Third", "PPA", "CrsPA", "PrgP")
+  passing_cols_adj <- na.omit(team_passing[, passing_cols_adj]) / fullgames_player
+  
+  team_passing_clean <- na.omit(cbind(passing_cols_unadj, passing_cols_adj))
+  
+  
+  team_passing_types <- fb_team_player_stats(team_urls = team_url, stat_type = "passing_types")
+  #head(team_passing_types, 10)
+  
+  #TB_Pass_Types / games
+  #SW_Pass_Types / games
+  #Crs_Pass_Types / games
+  #TI_Pass_types / games
+  
+  #head(team_passing_types, 10)
+  
+  passing_types_cols_adj <- c("TB_Pass_Types", "Sw_Pass_Types", "Crs_Pass_Types", "TI_Pass_Types")
+  passing_types_cols_adj <- team_passing_types[, passing_types_cols_adj] / fullgames_player
+  team_passing_types_clean <- passing_types_cols_adj
+  
+  
+  team_gca <- na.omit(fb_team_player_stats(team_urls = team_url, stat_type = "gca"))
+  #head(team_gca, 10)
+  
+  #SCA90_SCA
+  #PassLive_SCA_Types / games
+  #TO_SCA_Types / games
+  #Sh_SCA_Types / games
+  #Fld_SCA_Types / games
+  #Def_SCA_Types / games
+  
+  gca_cols_unadj <- c("SCA90_SCA")
+  gca_cols_unadj <- team_gca[, gca_cols_unadj]
+  gca_cols_adj <- c("PassLive_SCA_Types", "TO_SCA_Types", "Sh_SCA_Types", "Fld_SCA_Types", "Def_SCA_Types")
+  
+  gca_cols_adj <- team_gca[, gca_cols_adj] / fullgames_player
+  team_gca_clean <- cbind(gca_cols_unadj, gca_cols_adj)
+  
+  #No GCA because really sparse, high colinearity
+  
+  team_defense <- fb_team_player_stats(team_urls = team_url, stat_type = "defense")
+  #head(team_defense, 10)
+  
+  #TklW_Tackles / games
+  #"Def 3rd_Tackles" / games
+  #"Mid 3rd_Tackles" / games
+  #"Att 3rd_Tackles" / games
+  #Tkl_Challenges / games
+  #Att_Challenges / games
+  #Tkl_percent_Challenges
+  #Sh_Blocks / games
+  #Pass_Blocks / games
+  #Int / games
+  #Clr / games
+  #Err / games
+  
+  defense_cols_unadj <- c("Tkl_percent_Challenges")
+  defense_cols_unadj <- team_defense[, defense_cols_unadj]
+  defense_cols_unadj[is.na(defense_cols_unadj)] <- 0
+  
+  defense_cols_adj <- c("TklW_Tackles", "Def 3rd_Tackles", "Mid 3rd_Tackles", "Att 3rd_Tackles", "Tkl_Challenges", "Att_Challenges", "Sh_Blocks", "Pass_Blocks", "Int", "Clr", "Err")
+  
+  defense_cols_adj <- na.omit(team_defense[, defense_cols_adj]) / fullgames_player
+  team_defense_clean <- na.omit(cbind(defense_cols_unadj, defense_cols_adj))
+  
+
+  team_possession <- fb_team_player_stats(team_urls = team_url, stat_type = "possession")
+  #head(team_possession, 10)
+  
+  #Def Pen_Touches / games
+  #Def 3rd_Touches / games
+  #Mid 3rd_Touches / games
+  #Att 3rd_Touches / games
+  #Att Pen_Touches / games
+  #Att_Take_Ons / games
+  #Succ_Take_Ons / games
+  #Succ_percent_Take_Ons
+  #Carries_Carries / games
+  #TotDist_Carries / games
+  #PrgDist_Carries / games
+  #PrgC_Carries / games
+  #Final_Third_Carries / games
+  #CPA_Carries / games
+  #Mis_Carries / games
+  #Rec_Receiving / games
+  #PrgR_Receiving / games
+  
+  possession_cols_unadj <- c("Succ_percent_Take_Ons")
+  possession_cols_unadj <- team_possession[, possession_cols_unadj]
+  possession_cols_unadj[is.na(possession_cols_unadj)] <- 0
+  
+  possession_cols_adj <- c("Def Pen_Touches", "Def 3rd_Touches", "Mid 3rd_Touches", "Att 3rd_Touches", "Att Pen_Touches", "Att_Take_Ons", "Succ_Take_Ons", "Carries_Carries", "TotDist_Carries", "PrgDist_Carries", "PrgC_Carries", "Final_Third_Carries", "CPA_Carries", "Mis_Carries", "Rec_Receiving", "PrgR_Receiving")
+  
+  possession_cols_adj <- na.omit(team_possession[, possession_cols_adj]) / fullgames_player
+  team_possession_clean <- na.omit(cbind(possession_cols_unadj, possession_cols_adj))
+  
+  
+  
+  
+  team_misc <- fb_team_player_stats(team_urls = team_url, stat_type = "misc")
+  #head(team_misc, 10)
+  
+  #Fls / games
+  #Fld / games
+  #Off / games
+  #Recov / games
+  #Won_Aerial_Duels / games
+  #Lost_Aerial_Duels / games
+  #Won_percent_Aerial_Duels
+  
+  misc_cols_unadj <- c("Won_percent_Aerial_Duels")
+  misc_cols_unadj <- team_misc[, misc_cols_unadj]
+  misc_cols_unadj[is.na(misc_cols_unadj)] <- 0
+  
+  misc_cols_adj <- c("Fls", "Fld", "Off", "Recov", "Won_Aerial_Duels", "Lost_Aerial_Duels")
+  
+  misc_cols_adj <- na.omit(team_misc[, misc_cols_adj] / fullgames_player)
+  team_misc_clean <- na.omit(cbind(misc_cols_unadj, misc_cols_adj))
+  
+  final_result <- cbind(team_standard_clean, team_shooting_clean, team_passing_clean, team_passing_types_clean, team_gca_clean, team_defense_clean, team_possession_clean, team_misc_clean)
+  #final_result <- team_passing_clean
+  
+  final_result <- subset(final_result, final_result$Pos != "GK")
+  final_result <- subset(final_result, final_result$Min_Playing_Time >= 500)
+  final_result$Pos <- substr(final_result$Pos, 1, 2)
+  
+  
+  
+  
+  return(final_result)
+  
+  
+}
+
+liverpool_2425_url <- "https://fbref.com/en/squads/822bd0ba/Liverpool-Stats"
+liverpool_2425_logs <- pull_team_data(liverpool_2425_url)
+
+liverpool_2425_logs
+```
+
+
+
+```{r}
+#set.seed(123) #reproducibility
+
+#liverpool_2425_logs <- liverpool_2425_logs[liverpool_2425_logs$Pos != "GK"]
+
+liverpool_2425_logs <- subset(liverpool_2425_logs, liverpool_2425_logs$Pos != "GK")
+liverpool_2425_logs$Pos <- substr(liverpool_2425_logs$Pos, 1, 2)
+
+liverpool_2425_logs
+
+# Perform PCA
+pca_result <- prcomp(liverpool_2425_logs[ , 5:77], scale. = TRUE)
+pca_data <- as.data.frame(pca_result$x[, 1:2])  # Use the first 2 principal components
+pca_data$cluster <- as.factor(liverpool_2425_logs$Pos)
+#pca_data$label <- as.factor(kmeans_big5$Name)
+
+
+pca_data$label <- as.factor(liverpool_2425_logs$Player)
+head(pca_data)
+
+# Plot PCA with clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "Liverpool PCA", x = "PC1", y = "PC2") + 
+  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 1)  # Add labels
+
+```
+
