@@ -1,6 +1,8 @@
 ---
 title: "MATH232FinalProject"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 date: "2025-04-26"
 ---
 
@@ -18,45 +20,6 @@ library(class)
 
 
 ```{r}
-library(worldfootballR)
-
-team_url <- "https://fbref.com/en/squads/822bd0ba/Liverpool-Stats"
-
-team_standard <- na.omit(fb_team_player_stats(team_urls = team_url, stat_type = "standard"))
-fullgames_player <- (team_standard["Min_Playing_Time"] / 90)
-fullgames_player <- as.vector(fullgames_player)
-  
-#head(fullgames_player, 10)
-  
-
-standard_cols_unadj <- c("Player", "Pos", "Age", "Min_Playing_Time")
-standard_cols_unadj <- team_standard[, standard_cols_unadj]
-standard_cols_adj <- c("CrdY", "CrdR", "npxG_Expected", "xAG_Expected", "PrgC_Progression", "PrgR_Progression")
-
-#length(fullgames_player)
-#length(team_standard[, standard_cols_adj])
-
-new_m <- team_standard[, standard_cols_adj] / fullgames_player
-
-head(new_m, 10)
-#standard_cols_adj <- sweep(team_standard[, standard_cols_adj], 1, fullgames_player, "/")
-  
-#team_standard_clean <- cbind(team_standard[, standard_cols_unadj], sweep(team_standard[, standard_cols_adj], 2, as.numeric(fullgames_player), "/"))
-  
-team_standard_clean <- team_standard
-#team_standard_clean <- cbind(standard_cols_unadj, standard_cols_adj)
-  
-#head(team_standard_clean)
-
-```
-
-
-
-
-
-
-
-```{r}
 #https://jaseziv.github.io/worldfootballR/articles/extract-fbref-data.html#get-player-scouting-report
 
 library(worldfootballR)
@@ -71,8 +34,7 @@ pull_team_data <- function(team_url){
   #Pos,
   #Age,
   #Min_Playing_Time,
-  #CrdY / games
-  #CrdR / games
+  #CrdY / games (Not red cards)
   #npxG_Expected / games
   #xAG_Expected / games
   #PrgC_Progression / games
@@ -80,7 +42,7 @@ pull_team_data <- function(team_url){
   
   standard_cols_unadj <- c("Player", "Pos", "Age", "Min_Playing_Time")
   standard_cols_unadj <- team_standard[, standard_cols_unadj]
-  standard_cols_adj <- c("CrdY", "CrdR", "npxG_Expected", "xAG_Expected", "PrgC_Progression", "PrgR_Progression")
+  standard_cols_adj <- c("CrdY", "npxG_Expected", "xAG_Expected", "PrgC_Progression", "PrgR_Progression")
   
   standard_cols_adj <- team_standard[, standard_cols_adj] / fullgames_player
   team_standard_clean <- cbind(standard_cols_unadj, standard_cols_adj)
@@ -269,40 +231,149 @@ pull_team_data <- function(team_url){
   
 }
 
+```
+
+
+
+```{r, eval = FALSE}
+#set.seed(123) #reproducibility
+
 liverpool_2425_url <- "https://fbref.com/en/squads/822bd0ba/Liverpool-Stats"
 liverpool_2425_logs <- pull_team_data(liverpool_2425_url)
 
 liverpool_2425_logs
+
+# Perform PCA
+pca_result <- prcomp(liverpool_2425_logs[ , 5:76], scale. = TRUE)
+pca_data <- as.data.frame(pca_result$x[, 1:2])  # Use the first 2 principal components
+pca_data$cluster <- as.factor(liverpool_2425_logs$Pos)
+pca_data$label <- as.factor(liverpool_2425_logs$Player)
+
+
+loadings_pc1_pc2 <- pca_result$rotation[, 1:2]
+# Sort for PC1 by absolute value
+sorted_pc1 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,1]), decreasing = TRUE), 1]
+# Sort for PC2 by absolute value
+sorted_pc2 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,2]), decreasing = TRUE), 2]
+cat("Top variables for PC1:\n")
+sorted_pc1
+cat("\nTop variables for PC2:\n")
+sorted_pc2
+
+
+# Plot PCA with clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.1)) +
+  scale_y_continuous(expand = expansion(mult = 0.1)) +
+  theme_minimal() +
+  labs(title = "PCA of Liverpool Outfield Players, by Position", x = "PC1", y = "PC2") + 
+  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 2.5)  # Add labels
+
+```
+```{r, eval = FALSE}
+chelsea_2425_url <- "https://fbref.com/en/squads/cff3d9bb/Chelsea-Stats"
+chelsea_2425_logs <- pull_team_data(chelsea_2425_url)
+
+chelsea_2425_logs
+
+# Perform PCA
+pca_result <- prcomp(chelsea_2425_logs[ , 5:76], scale. = TRUE)
+pca_data <- as.data.frame(pca_result$x[, 1:2])  # Use the first 2 principal components
+pca_data$cluster <- as.factor(chelsea_2425_logs$Pos)
+pca_data$label <- as.factor(chelsea_2425_logs$Player)
+
+
+loadings_pc1_pc2 <- pca_result$rotation[, 1:2]
+# Sort for PC1 by absolute value
+sorted_pc1 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,1]), decreasing = TRUE), 1]
+# Sort for PC2 by absolute value
+sorted_pc2 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,2]), decreasing = TRUE), 2]
+cat("Top variables for PC1:\n")
+sorted_pc1
+cat("\nTop variables for PC2:\n")
+sorted_pc2
+
+
+# Plot PCA with clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.1)) +
+  scale_y_continuous(expand = expansion(mult = 0.1)) +
+  theme_minimal() +
+  labs(title = "PCA of Chelsea Outfield Players, by Position", x = "PC1", y = "PC2") + 
+  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 2.5)  # Add labels
+
+```
+
+```{r}
+bmouth_2425_url <- "https://fbref.com/en/squads/4ba7cbea/Bournemouth-Stats"
+bmouth_2425_logs <- pull_team_data(bmouth_2425_url)
+
+bmouth_2425_logs
+
+# Perform PCA
+pca_result <- prcomp(bmouth_2425_logs[ , 5:76], scale. = TRUE)
+pca_data <- as.data.frame(pca_result$x[, 1:2])  # Use the first 2 principal components
+pca_data$cluster <- as.factor(bmouth_2425_logs$Pos)
+pca_data$label <- as.factor(bmouth_2425_logs$Player)
+
+
+loadings_pc1_pc2 <- pca_result$rotation[, 1:2]
+# Sort for PC1 by absolute value
+sorted_pc1 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,1]), decreasing = TRUE), 1]
+# Sort for PC2 by absolute value
+sorted_pc2 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,2]), decreasing = TRUE), 2]
+cat("Top variables for PC1:\n")
+sorted_pc1
+cat("\nTop variables for PC2:\n")
+sorted_pc2
+
+
+# Plot PCA with clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.1)) +
+  scale_y_continuous(expand = expansion(mult = 0.1)) +
+  theme_minimal() +
+  labs(title = "PCA of Bournemouth Outfield Players, by Position", x = "PC1", y = "PC2") + 
+  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 2.5)  # Add labels
+
 ```
 
 
 
 ```{r}
-#set.seed(123) #reproducibility
+manu_2425_url <- "https://fbref.com/en/squads/19538871/Manchester-United-Stats"
+manu_2425_logs <- pull_team_data(manu_2425_url)
 
-#liverpool_2425_logs <- liverpool_2425_logs[liverpool_2425_logs$Pos != "GK"]
-
-liverpool_2425_logs <- subset(liverpool_2425_logs, liverpool_2425_logs$Pos != "GK")
-liverpool_2425_logs$Pos <- substr(liverpool_2425_logs$Pos, 1, 2)
-
-liverpool_2425_logs
+manu_2425_logs
 
 # Perform PCA
-pca_result <- prcomp(liverpool_2425_logs[ , 5:77], scale. = TRUE)
+pca_result <- prcomp(manu_2425_logs[ , 5:76], scale. = TRUE)
 pca_data <- as.data.frame(pca_result$x[, 1:2])  # Use the first 2 principal components
-pca_data$cluster <- as.factor(liverpool_2425_logs$Pos)
-#pca_data$label <- as.factor(kmeans_big5$Name)
+pca_data$cluster <- as.factor(manu_2425_logs$Pos)
+pca_data$label <- as.factor(manu_2425_logs$Player)
 
 
-pca_data$label <- as.factor(liverpool_2425_logs$Player)
-head(pca_data)
+loadings_pc1_pc2 <- pca_result$rotation[, 1:2]
+# Sort for PC1 by absolute value
+sorted_pc1 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,1]), decreasing = TRUE), 1]
+# Sort for PC2 by absolute value
+sorted_pc2 <- loadings_pc1_pc2[order(abs(loadings_pc1_pc2[,2]), decreasing = TRUE), 2]
+cat("Top variables for PC1:\n")
+sorted_pc1
+cat("\nTop variables for PC2:\n")
+sorted_pc2
+
 
 # Plot PCA with clusters
 ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
   geom_point(size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.1)) +
+  scale_y_continuous(expand = expansion(mult = 0.1)) +
   theme_minimal() +
-  labs(title = "Liverpool PCA", x = "PC1", y = "PC2") + 
-  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 1)  # Add labels
+  labs(title = "PCA of Man. United Outfield Players, by Position", x = "PC1", y = "PC2") + 
+  geom_text(aes(label = label), vjust = -1, hjust = 0.5, color = "black", size = 2.5)  # Add labels
 
 ```
-
